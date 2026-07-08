@@ -47,6 +47,7 @@ import {
   orderRecapExpandedRows,
   pickRecapDashboardRows,
 } from "@/lib/fund-sources";
+import { useFundSourcePins } from "@/lib/fund-source-pins";
 import { headerSlide, staggerContainer, staggerItem } from "@/lib/motion";
 import { confirmAction, notifyError, notifySuccess } from "@/lib/notify";
 
@@ -131,9 +132,16 @@ function RecapRowItem({
 
 function CollapsibleRecapGrid({ rows }: { rows: RecapRow[] }) {
   const [expanded, setExpanded] = useState(false);
+  const { pins } = useFundSourcePins();
 
-  const collapsedRows = useMemo(() => pickRecapDashboardRows(rows), [rows]);
-  const allRows = useMemo(() => orderRecapExpandedRows(rows), [rows]);
+  const collapsedRows = useMemo(
+    () => pickRecapDashboardRows(rows, { userPinnedSlugs: pins }),
+    [rows, pins]
+  );
+  const allRows = useMemo(
+    () => orderRecapExpandedRows(rows, { userPinnedSlugs: pins }),
+    [rows, pins]
+  );
 
   const visible = expanded ? allRows : collapsedRows;
   const hiddenCount = allRows.length - collapsedRows.length;
@@ -462,8 +470,8 @@ export default function Dashboard({ userName }: DashboardProps) {
             <div>
               <CardTitle className="text-base">Rekap per tipe penyimpanan</CardTitle>
               <CardDescription>
-                Cash & BCA selalu tampil; 4 lainnya otomatis dari pemasukan
-                terbesar. Yang masih Rp0 ada di Selengkapnya.
+                Cash selalu tampil; sematan Anda prioritas, sisa slot dari
+                pemasukan terbesar. Sematkan lewat Rekap semua penyimpanan.
               </CardDescription>
             </div>
             <Link

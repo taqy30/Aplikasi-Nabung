@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { toast } from "sonner";
 import { ArrowLeft, Wallet } from "lucide-react";
 import DashboardLoadingScreen from "./DashboardLoadingScreen";
 import AppFooter from "./AppFooter";
@@ -18,7 +17,10 @@ import {
 } from "@/components/ui/card";
 import FundStorageListItem from "./FundStorageListItem";
 import type { FundSourceSummary } from "@/lib/fund-source-detail";
+import { orderRecapExpandedRows } from "@/lib/fund-sources";
+import { useFundSourcePins } from "@/lib/fund-source-pins";
 import { headerSlide, staggerContainer, staggerItem } from "@/lib/motion";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import { useInactivityLogout } from "@/lib/useInactivityLogout";
 
 type FundSourceHubViewProps = {
@@ -30,6 +32,12 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
   useInactivityLogout();
   const [ready, setReady] = useState(false);
   const [items, setItems] = useState<FundSourceSummary[]>([]);
+  const { pins, pinCount, maxPins, isPinned, togglePin } = useFundSourcePins();
+
+  const orderedItems = useMemo(
+    () => orderRecapExpandedRows(items, { userPinnedSlugs: pins }),
+    [items, pins]
+  );
 
   const fetchData = useCallback(async () => {
     try {
@@ -42,7 +50,7 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
       setItems(data.items ?? []);
       setReady(true);
     } catch {
-      toast.error("Gagal memuat data");
+      void notifyError("Gagal", "Tidak dapat memuat data penyimpanan.");
       setReady(true);
     }
   }, [router]);
@@ -50,6 +58,20 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleTogglePin = (slug: string, name: string) => {
+    const result = togglePin(slug);
+    if (!result.ok) {
+      void notifyError("Tidak bisa sematkan", result.reason);
+      return;
+    }
+    void notifySuccess(
+      result.pinned ? "Disematkan" : "Sematan dilepas",
+      result.pinned
+        ? `${name} akan tampil di dashboard.`
+        : `${name} tidak lagi diprioritaskan di dashboard.`
+    );
+  };
 
   if (!ready) {
     return <DashboardLoadingScreen />;
@@ -92,8 +114,9 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Semua penyimpanan</CardTitle>
             <CardDescription>
-              Saldo dari transaksi tercatat (masuk − keluar). Ketuk untuk
-              riwayat harian/bulanan.
+              Ketuk baris untuk riwayat. Gunakan ikon pin untuk menyematkan ke
+              dashboard (maks. {maxPins} selain Cash). Sematan: {pinCount}/
+              {maxPins}.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -103,7 +126,7 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
               initial="initial"
               animate="animate"
             >
-              {items.map((item) => (
+              {orderedItems.map((item) => (
                 <motion.div key={item.id} variants={staggerItem}>
                   <FundStorageListItem
                     slug={item.slug}
@@ -111,6 +134,9 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
                     masuk={item.masuk}
                     keluar={item.keluar}
                     href={`/dashboard/penyimpanan/${item.slug}`}
+                    pinned={isPinned(item.slug)}
+                    canTogglePin
+                    onTogglePin={() => handleTogglePin(item.slug, item.name)}
                   />
                 </motion.div>
               ))}
