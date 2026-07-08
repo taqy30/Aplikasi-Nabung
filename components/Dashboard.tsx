@@ -470,8 +470,8 @@ export default function Dashboard({ userName }: DashboardProps) {
             <div>
               <CardTitle className="text-base">Rekap per tipe penyimpanan</CardTitle>
               <CardDescription>
-                Cash selalu tampil; sematan Anda prioritas, sisa slot dari
-                pemasukan terbesar. Sematkan lewat Rekap semua penyimpanan.
+                Sematkan penyimpanan favorit lewat Rekap semua penyimpanan;
+                sisa slot diisi dari pemasukan terbesar.
               </CardDescription>
             </div>
             <Link

@@ -2,22 +2,35 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export const FUND_SOURCE_PINS_STORAGE_KEY = "rekapuang_fund_pins_v1";
+export const FUND_SOURCE_PINS_STORAGE_KEY = "rekapuang_fund_pins_v2";
 
-/** Cash selalu di dashboard; user bisa sematkan hingga sebanyak ini. */
-export const MAX_USER_FUND_SOURCE_PINS = 5;
+/** Maksimal tipe penyimpanan yang bisa disematkan ke preview dashboard. */
+export const MAX_USER_FUND_SOURCE_PINS = 6;
 
 function readPinsFromStorage(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(FUND_SOURCE_PINS_STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      // Migrasi ringan dari key v1 (tanpa cash)
+      const legacy = localStorage.getItem("rekapuang_fund_pins_v1");
+      if (!legacy) return [];
+      const parsedLegacy = JSON.parse(legacy) as unknown;
+      if (!Array.isArray(parsedLegacy)) return [];
+      const migrated = parsedLegacy
+        .filter((item): item is string => typeof item === "string")
+        .map((slug) => slug.trim().toLowerCase())
+        .filter((slug) => slug.length > 0)
+        .slice(0, MAX_USER_FUND_SOURCE_PINS);
+      writePinsToStorage(migrated);
+      return migrated;
+    }
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((item): item is string => typeof item === "string")
       .map((slug) => slug.trim().toLowerCase())
-      .filter((slug) => slug.length > 0 && slug !== "cash")
+      .filter((slug) => slug.length > 0)
       .slice(0, MAX_USER_FUND_SOURCE_PINS);
   } catch {
     return [];
@@ -45,7 +58,10 @@ export function useFundSourcePins() {
     setReady(true);
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === FUND_SOURCE_PINS_STORAGE_KEY) {
+      if (
+        event.key === FUND_SOURCE_PINS_STORAGE_KEY ||
+        event.key === "rekapuang_fund_pins_v1"
+      ) {
         setPins(readPinsFromStorage());
       }
     };
@@ -54,43 +70,33 @@ export function useFundSourcePins() {
   }, []);
 
   const isPinned = useCallback(
-    (slug: string) => {
-      if (slug === "cash") return true;
-      return pins.includes(slug);
-    },
+    (slug: string) => pins.includes(slug),
     [pins]
   );
 
-  const togglePin = useCallback(
-    (slug: string): TogglePinResult => {
-      if (slug === "cash") {
-        return { ok: false, reason: "Cash selalu tampil di dashboard." };
-      }
+  const togglePin = useCallback((slug: string): TogglePinResult => {
+    const current = readPinsFromStorage();
+    const exists = current.includes(slug);
 
-      const current = readPinsFromStorage();
-      const exists = current.includes(slug);
-
-      if (exists) {
-        const next = current.filter((s) => s !== slug);
-        writePinsToStorage(next);
-        setPins(next);
-        return { ok: true, pinned: false };
-      }
-
-      if (current.length >= MAX_USER_FUND_SOURCE_PINS) {
-        return {
-          ok: false,
-          reason: `Maksimal ${MAX_USER_FUND_SOURCE_PINS} penyimpanan disematkan (selain Cash).`,
-        };
-      }
-
-      const next = [...current, slug];
+    if (exists) {
+      const next = current.filter((s) => s !== slug);
       writePinsToStorage(next);
       setPins(next);
-      return { ok: true, pinned: true };
-    },
-    []
-  );
+      return { ok: true, pinned: false };
+    }
+
+    if (current.length >= MAX_USER_FUND_SOURCE_PINS) {
+      return {
+        ok: false,
+        reason: `Maksimal ${MAX_USER_FUND_SOURCE_PINS} penyimpanan disematkan di dashboard.`,
+      };
+    }
+
+    const next = [...current, slug];
+    writePinsToStorage(next);
+    setPins(next);
+    return { ok: true, pinned: true };
+  }, []);
 
   return {
     pins,

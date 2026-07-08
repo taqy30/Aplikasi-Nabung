@@ -29,7 +29,7 @@ export default function FundStorageListItem({
   onTogglePin,
 }: FundStorageListItemProps) {
   const net = masuk - keluar;
-  const showPin = canTogglePin && slug !== "cash";
+  const showPin = canTogglePin;
 
   const content = (
     <>
@@ -37,7 +37,7 @@ export default function FundStorageListItem({
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex min-w-0 items-center gap-1.5">
           <p className="truncate text-sm font-medium leading-none">{name}</p>
-          {pinned && slug !== "cash" && canTogglePin && (
+          {pinned && canTogglePin && (
             <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
               <Pin className="size-2.5 fill-current" />
               Sematan

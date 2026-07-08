@@ -115,8 +115,7 @@ export default function FundSourceHubView({ userName }: FundSourceHubViewProps) 
             <CardTitle className="text-base">Semua penyimpanan</CardTitle>
             <CardDescription>
               Ketuk baris untuk riwayat. Gunakan ikon pin untuk menyematkan ke
-              dashboard (maks. {maxPins} selain Cash). Sematan: {pinCount}/
-              {maxPins}.
+              dashboard (maks. {maxPins}). Sematan: {pinCount}/{maxPins}.
             </CardDescription>
           </CardHeader>
           <CardContent>
